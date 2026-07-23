@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gufran Plumber - Cloud Client Manager</title>
+    <!-- jsPDF Library for Receipt Download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Firebase SDK (v10.8.0) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTh3uE5_inodxRrgW81nauIkN5iUm1SsI",
+            authDomain: "gufran-217a3.firebaseapp.com",
+            projectId: "gufran-217a3",
+            storageBucket: "gufran-217a3.firebasestorage.app",
+            messagingSenderId: "590390278332",
+            appId: "1:590390278332:web:1ce6402593d22042c978b9",
+            measurementId: "G-9T337QQTLC"
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            window.db = db;
+            window.firestoreOps = { collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot };
+            console.log("Firebase Connected Successfully!");
+        } catch (err) {
+            console.error("Firebase Init Error:", err);
+        }
+    </script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background-color: #f3f4f6; padding: 15px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .grid-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; text-align: center; }
+        .stat-box { background: #f9fafb; padding: 12px 8px; border-radius: 6px; border: 1px solid #e5e7eb; }
+        .stat-box p { font-size: 10px; color: #6b7280; font-weight: bold; text-transform: uppercase; }
+        .stat-box h3 { font-size: 16px; margin-top: 5px; }
+        
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #4b5563; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+        .btn { border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; color: white; margin-top: 5px; }
+        .btn-blue { background: #2563eb; } .btn-blue:hover { background: #1d4ed8; }
+        .btn-green { background: #16a34a; } .btn-green:hover { background: #15803d; }
+        .btn-purple { background: #9333ea; } .btn-purple:hover { background: #7e22ce; }
+        .btn-orange { background: #ea580c; } .btn-orange:hover { background: #c2410c; }
+        .btn-red { background: #dc2626; } .btn-red:hover { background: #b91c1c; }
+        .hidden { display: none !important; }
+        .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 10px; font-size: 13px; margin-bottom: 10px; border-radius: 4px; }
+        ul { list-style: none; }
+        li { background: #f9fafb; padding: 10px; border-radius: 6px; margin-top: 8px; border-left: 4px solid #2563eb; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+        .extra-box { background: #faf5ff; border: 1px solid #f3e8ff; padding: 12px; border-radius: 6px; margin-top: 10px; }
+        .action-btns { display: flex; gap: 5px; }
+        .btn-sm { padding: 4px 8px; font-size: 11px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- Header -->
+        <header>
+            <h1>🔧 Gufran Plumber</h1>
+            <p id="sub-header-title">Cloud Connected Payment System</p>
+        </header>
+
+        <!-- 1. Dashboard (5 Summary Boxes) -->
+        <div class="card" id="dash-card">
+            <h3 id="dash-title" style="margin-bottom: 12px; font-size: 15px; color: #374151;">📊 Client Summary Details</h3>
+            <div class="grid-top">
+                <div class="stat-box" id="box-total-clients">
+                    <p>TOTAL CLIENTS</p>
+                    <h3 id="dash-clients" style="color: #1f2937;">0</h3>
+                </div>
+                <div class="stat-box">
+                    <p>TOTAL DEAL</p>
+                    <h3 id="dash-deals" style="color: #2563eb;">₹0</h3>
+                </div>
+                <div class="stat-box">
+                    <p>EXTRA WORK</p>
+                    <h3 id="dash-extra" style="color: #9333ea;">₹0</h3>
+                </div>
+                <div class="stat-box">
+                    <p>TOTAL RECEIVED</p>
+                    <h3 id="dash-received" style="color: #16a34a;">₹0</h3>
+                </div>
+                <div class="stat-box">
+                    <p>REMAINING</p>
+                    <h3 id="dash-remaining" style="color: #dc2626;">₹0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Add Client -->
+        <div class="card admin-only">
+            <h2 style="font-size: 16px; margin-bottom: 10px;">👤 Naya Client Add Karein</h2>
+            
+            <div id="existing-alert" class="alert hidden">
+                ⚠️ Yeh Mobile Number pehle se registered hai! 
+                <button onclick="switchToExisting()" style="background:none; border:none; color:#b45309; text-decoration:underline; cursor:pointer; font-weight:bold;">Profile Open Karein</button>
+            </div>
+
+            <form id="add-client-form">
+                <div class="form-group">
+                    <label>Mobile Number</label>
+                    <input type="tel" id="c-mobile" oninput="checkDuplicate()" placeholder="10 Digit Mobile Number" required>
+                </div>
+                <div class="form-group">
+                    <label>Client Name</label>
+                    <input type="text" id="c-name" placeholder="Client Ka Naam" required>
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <input type="text" id="c-address" placeholder="Address" required>
+                </div>
+                <!-- 🆕 Work Title Input Field (Added below Address) -->
+                <div class="form-group">
+                    <label>Work Title (Kon Sa Kaam Karna Hai)</label>
+                    <input type="text" id="c-worktitle" placeholder="Work Title (e.g., Bathroom Fitting)" required>
+                </div>
+                <div class="form-group">
+                    <label>Deal Amount (₹)</label>
+                    <input type="number" id="c-deal" placeholder="Deal Amount" required>
+                </div>
+                <button type="submit" id="save-btn" class="btn btn-blue">Save Karein</button>
+            </form>
+        </div>
+
+        <!-- 3. Profile & Actions -->
+        <div class="card">
+            <h2 class="admin-only" style="font-size: 16px; margin-bottom: 10px;">📋 Client Select Karein</h2>
+            <select id="client-selector" class="admin-only" onchange="loadProfile()">
+                <option value="">-- Select Client Profile --</option>
+            </select>
+
+            <div id="profile-area" class="hidden" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+                
+                <!-- Work Dropdown & Add Work -->
+                <div style="background: #fff7ed; border: 1px solid #ffedd5; padding: 12px; border-radius: 6px;">
+                    <label>📁 Active Work / Deal:</label>
+                    <select id="project-selector" onchange="switchProject()"></select>
+
+                    <div class="admin-only" style="margin-top: 10px; border-top: 1px solid #fed7aa; padding-top: 10px;">
+                        <p style="font-size: 11px; font-weight: bold; color: #c2410c; margin-bottom: 5px;">🔄 Is client ne dobara bulaya? Naya Work Add Karein:</p>
+                        <input type="text" id="new-p-title" placeholder="Work Title (e.g., Tap Replace)" style="margin-bottom: 5px;">
+                        <input type="number" id="new-p-deal" placeholder="Deal Amount (₹)" style="margin-bottom: 5px;">
+                        <button type="button" onclick="createNewProject()" class="btn btn-orange">+ Add Naya Work</button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" onclick="sendWhatsApp()" class="btn btn-green admin-only" style="flex: 1;">💬 WhatsApp Slip</button>
+                    <button type="button" onclick="generatePDF()" class="btn btn-red" style="flex: 1;">📄 Download PDF Receipt</button>
+                </div>
+
+                <!-- Payment Add Box -->
+                <div class="admin-only" style="border-top: 1px solid #eee; padding-top: 10px;">
+                    <h3 style="font-size: 14px; margin-bottom: 8px;">💵 Payment Receive Karein</h3>
+                    <input type="number" id="p-amount" placeholder="Amount (₹)" style="margin-bottom: 5px;">
+                    <select id="p-method" style="margin-bottom: 5px;">
+                        <option value="Cash">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Bank">Bank</option>
+                    </select>
+                    <input type="text" id="p-receiver" placeholder="Payment Lene Wale Ka Naam" style="margin-bottom: 5px;">
+                    <button type="button" onclick="addPayment()" class="btn btn-green">Payment Save Karein</button>
+                </div>
+
+                <!-- Extra Work Box -->
+                <div class="extra-box">
+                    <h3 style="font-size: 14px; margin-bottom: 8px; color: #6b21a8;">🛠️ Extra Work Details</h3>
+                    <div class="admin-only" style="margin-bottom: 10px;">
+                        <input type="text" id="ex-desc" placeholder="Extra Kaam Ka Naam (e.g. Kitchen tap replace)" style="margin-bottom: 5px;">
+                        <input type="number" id="ex-amount" placeholder="Amount (₹)" style="margin-bottom: 5px;">
+                        <button type="button" onclick="addExtraWork()" class="btn btn-purple">Extra Work Add Karein</button>
+                    </div>
+
+                    <p style="font-size: 12px; font-weight: bold; color: #7e22ce; margin-top: 10px;">Added Extra Work Details:</p>
+                    <ul id="extra-list"></ul>
+                </div>
+
+                <!-- Payment History -->
+                <div style="border-top: 1px solid #eee; padding-top: 10px;">
+                    <h3 style="font-size: 14px; margin-bottom: 5px;">📜 Payment History</h3>
+                    <ul id="payment-list"></ul>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let clients = [];
+        let currentClientId = null;
+        let currentProjectId = null;
+
+        // Firebase Sync Listener
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.firestoreOps && window.db) {
+                    const { collection, onSnapshot } = window.firestoreOps;
+                    onSnapshot(collection(window.db, "clients"), (snapshot) => {
+                        clients = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
+                        renderClientDropdown();
+                        if (currentClientId) loadProfile();
+                        else resetDashboardToZero();
+                    }, (error) => {
+                        console.error("Firestore error:", error);
+                        alert("Firebase Rules Blocked: Kripya Firestore Rules 'allow read, write: if true;' karein.");
+                    });
+                } else {
+                    let localData = localStorage.getItem('gp_clients_db');
+                    if(localData) clients = JSON.parse(localData);
+                    renderClientDropdown();
+                }
+            }, 1000);
+        });
+
+        // Add Client Handler with Custom Work Title
+        document.getElementById('add-client-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            let btn = document.getElementById('save-btn');
+            btn.innerText = "Saving...";
+            btn.disabled = true;
+
+            let dealVal = parseFloat(document.getElementById('c-deal').value) || 0;
+            let workTitleVal = document.getElementById('c-worktitle').value || "Initial Work";
+
+            let newClient = {
+                name: document.getElementById('c-name').value,
+                mobile: document.getElementById('c-mobile').value,
+                address: document.getElementById('c-address').value,
+                projects: [{
+                    id: 'p_' + Date.now(),
+                    title: workTitleVal, // Saves the provided Work Title
+                    deal: dealVal,
+                    payments: [],
+                    extraWork: []
+                }]
+            };
+
+            try {
+                if (window.firestoreOps && window.db) {
+                    const { collection, addDoc } = window.firestoreOps;
+                    await addDoc(collection(window.db, "clients"), newClient);
+                } else {
+                    newClient.firebaseId = 'c_' + Date.now();
+                    clients.push(newClient);
+                    localStorage.setItem('gp_clients_db', JSON.stringify(clients));
+                    renderClientDropdown();
+                }
+                this.reset();
+                alert("Client Save Ho Gaya!");
+            } catch (err) {
+                alert("Error saving client: " + err.message);
+            } finally {
+                btn.innerText = "Save Karein";
+                btn.disabled = false;
+            }
+        });
+
+        async function updateClientData(client) {
+            if (window.firestoreOps && window.db && client.firebaseId) {
+                const { doc, updateDoc } = window.firestoreOps;
+                const clientRef = doc(window.db, "clients", client.firebaseId);
+                await updateDoc(clientRef, { projects: client.projects });
+            } else {
+                localStorage.setItem('gp_clients_db', JSON.stringify(clients));
+                renderProjectDetails();
+            }
+        }
+
+        function resetDashboardToZero() {
+            document.getElementById('dash-title').innerText = "📊 Select Client To View Summary";
+            document.getElementById('dash-clients').innerText = "0";
+            document.getElementById('dash-deals').innerText = "₹0";
+            document.getElementById('dash-extra').innerText = "₹0";
+            document.getElementById('dash-received').innerText = "₹0";
+            document.getElementById('dash-remaining').innerText = "₹0";
+        }
+
+        function renderClientDropdown() {
+            let select = document.getElementById('client-selector');
+            select.innerHTML = '<option value="">-- Select Client Profile --</option>';
+            clients.forEach(c => {
+                let opt = document.createElement('option');
+                opt.value = c.firebaseId || c.id;
+                opt.textContent = c.name + " (" + c.mobile + ")";
+                select.appendChild(opt);
+            });
+            if(currentClientId) select.value = currentClientId;
+        }
+
+        function loadProfile() {
+            currentClientId = document.getElementById('client-selector').value;
+            let area = document.getElementById('profile-area');
+
+            if(!currentClientId) {
+                area.classList.add('hidden');
+                currentProjectId = null;
+                resetDashboardToZero();
+                return;
+            }
+
+            area.classList.remove('hidden');
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+
+            let projSelect = document.getElementById('project-selector');
+            projSelect.innerHTML = '';
+            client.projects.forEach(p => {
+                let opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.title + " (Deal: ₹" + p.deal + ")";
+                projSelect.appendChild(opt);
+            });
+
+            if(!currentProjectId || !client.projects.some(p => p.id === currentProjectId)) {
+                currentProjectId = client.projects[client.projects.length - 1].id;
+            }
+            projSelect.value = currentProjectId;
+            renderProjectDetails();
+        }
+
+        function switchProject() {
+            currentProjectId = document.getElementById('project-selector').value;
+            renderProjectDetails();
+        }
+
+        async function createNewProject() {
+            let title = document.getElementById('new-p-title').value;
+            let deal = parseFloat(document.getElementById('new-p-deal').value);
+            if(!title || !deal) return alert("Work Title aur Deal Amount dono bharein!");
+
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            client.projects.push({ id: 'p_' + Date.now(), title, deal, payments: [], extraWork: [] });
+
+            await updateClientData(client);
+            document.getElementById('new-p-title').value = '';
+            document.getElementById('new-p-deal').value = '';
+            alert("Naya Work Add Ho Gaya!");
+        }
+
+        function renderProjectDetails() {
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            if(!client) return;
+            let project = client.projects.find(p => p.id === currentProjectId);
+            if(!project) return;
+
+            updateDashboardForSelected(client, project);
+
+            let exList = document.getElementById('extra-list');
+            exList.innerHTML = project.extraWork.length === 0 ? '<li style="color:#9ca3af;">Koi extra kaam nahi hai.</li>' : '';
+            project.extraWork.forEach((w, index) => {
+                exList.innerHTML += `
+                    <li style="border-left-color:#a855f7;">
+                        <span>🔧 <b>${w.description}</b> - ₹${w.amount}</span>
+                        <div class="action-btns">
+                            <button onclick="editExtraWork(${index})" class="btn-sm btn-orange">✏️ Edit</button>
+                            <button onclick="deleteExtraWork(${index})" class="btn-sm btn-red">🗑️ Delete</button>
+                        </div>
+                    </li>`;
+            });
+
+            let payList = document.getElementById('payment-list');
+            payList.innerHTML = project.payments.length === 0 ? '<li style="color:#9ca3af;">Koi payment history nahi hai.</li>' : '';
+            project.payments.forEach((p, index) => {
+                payList.innerHTML += `
+                    <li>
+                        <span>💵 <b>₹${p.amount}</b> (${p.method}) - ${p.date} <br><small style="color:#6b7280;">Rec: ${p.receiver || 'N/A'}</small></span>
+                        <div class="action-btns">
+                            <button onclick="editPayment(${index})" class="btn-sm btn-orange">✏️ Edit</button>
+                            <button onclick="deletePayment(${index})" class="btn-sm btn-red">🗑️ Delete</button>
+                        </div>
+                    </li>`;
+            });
+        }
+
+        function updateDashboardForSelected(client, project) {
+            let totExtra = project.extraWork.reduce((a, b) => a + b.amount, 0);
+            let totPaid = project.payments.reduce((a, b) => a + b.amount, 0);
+            let totDeal = project.deal + totExtra;
+
+            document.getElementById('dash-title').innerText = `👤 ${client.name} | Work: ${project.title}`;
+            document.getElementById('dash-clients').innerText = "1";
+            document.getElementById('dash-deals').innerText = `₹${totDeal}`;
+            document.getElementById('dash-extra').innerText = `₹${totExtra}`;
+            document.getElementById('dash-received').innerText = `₹${totPaid}`;
+            document.getElementById('dash-remaining').innerText = `₹${totDeal - totPaid}`;
+        }
+
+        async function addPayment() {
+            let amt = parseFloat(document.getElementById('p-amount').value);
+            if(!amt) return alert("Sahi amount daalein!");
+
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            let project = client.projects.find(p => p.id === currentProjectId);
+
+            project.payments.push({
+                amount: amt,
+                method: document.getElementById('p-method').value,
+                receiver: document.getElementById('p-receiver').value,
+                date: new Date().toLocaleDateString('en-IN')
+            });
+
+            await updateClientData(client);
+            document.getElementById('p-amount').value = '';
+            document.getElementById('p-receiver').value = '';
+            alert("Payment Save Ho Gayi!");
+        }
+
+        async function editPayment(index) {
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            let project = client.projects.find(p => p.id === currentProjectId);
+            let p = project.payments[index];
+
+            let newAmt = prompt("Sahi Amount Darj Karein:", p.amount);
+            if (newAmt === null) return;
+            let parsedAmt = parseFloat(newAmt);
+            if (!parsedAmt || isNaN(parsedAmt)) return alert("Sahi Amount Bharein!");
+
+            p.amount = parsedAmt;
+            await updateClientData(client);
+            alert("Payment Update Ho Gayi!");
+        }
+
+        async function deletePayment(index) {
+            if (!confirm("Kya aap is payment ko delete karna chahte hain?")) return;
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            let project = client.projects.find(p => p.id === currentProjectId);
+            project.payments.splice(index, 1);
+            await updateClientData(client);
+            alert("Payment Delete Ho Gayi!");
+        }
+
+        async function addExtraWork() {
+            let desc = document.getElementById('ex-desc').value;
+            let amt = parseFloat(document.getElementById('ex-amount').value);
+            if(!desc || !amt) return alert("Extra kaam ka naam aur Amount dono bharein!");
+
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            let project = client.projects.find(p => p.id === currentProjectId);
+
+            project.extraWork.push({ description: desc, amount: amt });
+
+            await updateClientData(client);
+            document.getElementById('ex-desc').value = '';
+            document.getElementById('ex-amount').value = '';
+            alert("Extra Work Save Ho Gaya!");
+        }
+
+        async function editExtraWork(index) {
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            let project = client.projects.find(p => p.id === currentProjectId);
+            let w = project.extraWork[index];
+
+            let newDesc = prompt("Kaam Ka Vivran Badlein:", w.description);
+            if (newDesc === null) return;
+            let newAmt = prompt("Sahi Amount Darj Karein:", w.amount);
+            if (newAmt === null) return;
+            let parsedAmt = parseFloat(newAmt);
+            if (!newDesc || !parsedAmt || isNaN(parsedAmt)) return alert("Sahi Details Bharein!");
+
+            w.description = newDesc;
+            w.amount = parsedAmt;
+            await updateClientData(client);
+            alert("Extra Work Update Ho Gaya!");
+        }
+
+        async function deleteExtraWork(index) {
+            if (!confirm("Kya aap is extra work ko delete karna chahte hain?")) return;
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            let project = client.projects.find(p => p.id === currentProjectId);
+            project.extraWork.splice(index, 1);
+            await updateClientData(client);
+            alert("Extra Work Delete Ho Gaya!");
+        }
+
+        function sendWhatsApp() {
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            let project = client.projects.find(p => p.id === currentProjectId);
+
+            let totExtra = project.extraWork.reduce((a, b) => a + b.amount, 0);
+            let totPaid = project.payments.reduce((a, b) => a + b.amount, 0);
+            let totDeal = project.deal + totExtra;
+            let lastPay = project.payments.length > 0 ? project.payments[project.payments.length - 1].amount : 0;
+
+            let extraStr = "";
+            if(project.extraWork.length > 0) {
+                extraStr = "\n*Extra Work:*\n" + project.extraWork.map(w => `✔ ${w.description} - ₹${w.amount}`).join('\n') + "\n";
+            }
+
+            let msg = `🧾 *Gufran Plumber*\n\n` +
+                      `Client: *${client.name}*\n` +
+                      `Work: *${project.title}*\n` +
+                      `Original Deal: ₹${project.deal}\n\n` +
+                      `Payment Received: ₹${lastPay}\n` +
+                      `Total Paid: ₹${totPaid}\n` +
+                      `Remaining Balance: ₹${totDeal - totPaid}\n` +
+                      `${extraStr}\n` +
+                      `*New Total Deal: ₹${totDeal}*\n\n` +
+                      `Date: ${new Date().toLocaleDateString('en-IN')}\n\n` +
+                      `Thank you!`;
+
+            window.open(`https://wa.me/91${client.mobile}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function generatePDF() {
+            if(!window.jspdf) return alert("PDF Library Load Nahi Hui!");
+            let { jsPDF } = window.jspdf;
+            let doc = new jsPDF();
+
+            let client = clients.find(c => (c.firebaseId === currentClientId || c.id === currentClientId));
+            let project = client.projects.find(p => p.id === currentProjectId);
+
+            let totExtra = project.extraWork.reduce((a, b) => a + b.amount, 0);
+            let totPaid = project.payments.reduce((a, b) => a + b.amount, 0);
+
+            doc.setFontSize(18);
+            doc.text("Gufran Plumber - Payment Receipt", 14, 20);
+            doc.setFontSize(11);
+            doc.text(`Client Name: ${client.name}`, 14, 32);
+            doc.text(`Work Title: ${project.title}`, 14, 38);
+            doc.text(`Mobile: ${client.mobile}`, 14, 44);
+            doc.text(`Address: ${client.address}`, 14, 50);
+            doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 14, 56);
+
+            doc.line(14, 60, 196, 60);
+
+            doc.text(`Original Deal: RS. ${project.deal}`, 14, 70);
+            doc.text(`Total Extra Work: RS. ${totExtra}`, 14, 77);
+            doc.text(`Total Paid: RS. ${totPaid}`, 14, 84);
+            doc.text(`Remaining Balance: RS. ${(project.deal + totExtra) - totPaid}`, 14, 91);
+
+            doc.save(`Receipt_${client.name}.pdf`);
+        }
+    </script>
+</body>
+</html>
